@@ -11,12 +11,19 @@ np.random.seed(8)
 
 def main() -> NoReturn:
     raw_data: pd.DataFrame = pd.read_csv("data/raw_data.csv", header=0, index_col=0)
+    raw_data = raw_data.rename(columns={"SeriousDlqin2yrs": "target"})
+    raw_data["target"] = raw_data["target"].astype(int)
 
-    subset = 20000
-    index_subset = np.random.choice(raw_data.index, subset)
+    subset = 5000
+    index_subset = np.concatenate(
+        [
+            np.random.choice(raw_data[raw_data["target"] == 1].index, int(subset / 2)),
+            np.random.choice(raw_data[raw_data["target"] == 0].index, int(subset / 2)),
+        ]
+    )
+    np.random.shuffle(index_subset)
 
     original_subset = raw_data.loc[index_subset]
-    original_subset = original_subset.rename(columns={"SeriousDlqin2yrs": "target"})
     original_subset.to_csv("data/clear_data.csv", header=True, index=True)
 
     # input nans with KNNImputer
