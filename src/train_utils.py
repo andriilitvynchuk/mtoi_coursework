@@ -38,11 +38,13 @@ def train_nefclass(
     ]
     model.init_fuzzy_sets(abcs)
 
+    # train rules
     for features, target in zip(train_data, train_targets):
         model.learn_rule(features, target)
 
     best_metric_dict: Dict[str, Any] = dict(value=0, epoch=0)
     metrics: Dict[str, List[float]] = dict(train=[], test=[])
+    # train fuzzy sets
     for epoch in tqdm(range(model_params["num_epoch"])):
         for features, target in zip(train_data, train_targets):
             output = model(features, target)
