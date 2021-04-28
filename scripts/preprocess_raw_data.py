@@ -24,6 +24,7 @@ def main() -> NoReturn:
     np.random.shuffle(index_subset)
 
     original_subset = raw_data.loc[index_subset]
+    original_subset.index = range(len(original_subset.index))
     original_subset.to_csv("data/clear_data.csv", header=True, index=True)
 
     # input nans with KNNImputer

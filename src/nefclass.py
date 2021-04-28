@@ -65,6 +65,13 @@ class NefClassModel:
         for a, c in zip(antecedents, consequents):
             self.rule._create_node(a, c)
 
+    def predict(self, data: np.ndarray, targets: np.ndarray) -> np.ndarray:
+        predicts = []
+        for features, target in zip(data, targets):
+            output = self.__call__(features, target)
+            predicts.append(np.argmax(output))
+        return np.array(predicts)
+
 
 class _input_layer:
     def __init__(self, num_input_units, num_fuzzy_sets, universe_max, universe_min, membership_type):
