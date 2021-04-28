@@ -1,3 +1,4 @@
+import copy
 from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
@@ -20,7 +21,7 @@ def train_nefclass(
     universe_max: np.ndarray,
     universe_min: np.ndarray,
     metric_to_maximize: Callable = accuracy_score,
-) -> Tuple[float, float]:
+) -> Tuple[NefClassModel, float, float]:
     model = NefClassModel(
         num_input_units=model_params["num_input_units"],
         num_fuzzy_sets=model_params["num_sets"],
@@ -42,7 +43,7 @@ def train_nefclass(
     for features, target in zip(train_data, train_targets):
         model.learn_rule(features, target)
 
-    best_metric_dict: Dict[str, Any] = dict(value=0, epoch=0)
+    best_metric_dict: Dict[str, Any] = dict(value=0, epoch=0, model=None)
     metrics: Dict[str, List[float]] = dict(train=[], test=[])
     # train fuzzy sets
     for epoch in tqdm(range(model_params["num_epoch"])):
@@ -61,6 +62,7 @@ def train_nefclass(
         if this_epoch_test_metric > best_metric_dict["value"]:
             best_metric_dict["value"] = this_epoch_test_metric
             best_metric_dict["epoch"] = epoch
+            best_metric_dict["model"] = copy.deepcopy(model)
         # early stopping
         if epoch - best_metric_dict["epoch"] > min(model_params["num_epoch"] / 10, 10):
             break
@@ -68,4 +70,8 @@ def train_nefclass(
             print(f"Epoch {epoch}: {this_epoch_test_metric:.4f}")
 
     print("Best metric: ", best_metric_dict["value"], " at epoch # ", best_metric_dict["epoch"])
-    return metrics["train"][best_metric_dict["epoch"]], metrics["test"][best_metric_dict["epoch"]]
+    return (
+        best_metric_dict["model"],
+        metrics["train"][best_metric_dict["epoch"]],
+        metrics["test"][best_metric_dict["epoch"]],
+    )
