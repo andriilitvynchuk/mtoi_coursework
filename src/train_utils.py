@@ -1,12 +1,15 @@
 import copy
+from collections import defaultdict
 from typing import Any, Callable, Dict, List, Tuple
 
 import numpy as np
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
+from sklearn.model_selection import StratifiedKFold
 from tqdm import tqdm
 
 from .membership import build_membership_function
 from .nefclass import NefClassModel
+from .preprocess_utils import preprocess_with_knn_imputer_minmax_scaler
 
 
 seed = 8
@@ -20,7 +23,7 @@ def train_nefclass(
     test_targets: np.ndarray,
     universe_max: np.ndarray,
     universe_min: np.ndarray,
-    metric_to_maximize: Callable = accuracy_score,
+    metric_to_maximize: Callable = f1_score,
 ) -> Tuple[NefClassModel, float, float]:
     model = NefClassModel(
         num_input_units=model_params["num_input_units"],
@@ -75,3 +78,46 @@ def train_nefclass(
         metrics["train"][best_metric_dict["epoch"]],
         metrics["test"][best_metric_dict["epoch"]],
     )
+
+
+def cross_validation_train_neflcass(
+    data: np.ndarray,
+    target: np.ndarray,
+    model_params: Dict[str, Any],
+    preprocess_func: Callable = preprocess_with_knn_imputer_minmax_scaler,
+    metric_to_maximize: Callable = f1_score,
+    metrics_to_save: Tuple[Tuple[str, Callable], ...] = (("f1", f1_score),),  # type: ignore
+    folds: int = 5,
+) -> Dict[str, float]:
+    stratified_kfold = StratifiedKFold(n_splits=folds, random_state=seed, shuffle=True)
+    metrics: Dict[str, Any] = defaultdict(list)
+    for train_index, test_index in stratified_kfold.split(data, target):
+        train_data, train_targets = data[train_index], target[train_index]
+        test_data, test_targets = data[test_index], target[test_index]
+
+        train_data, test_data = preprocess_func(train_data=train_data, test_data=test_data)
+
+        model_params["num_input_units"] = train_data.shape[1]
+        model_params["output_units"] = len(np.unique(train_targets))
+
+        model, best_train, best_test = train_nefclass(
+            model_params=model_params,
+            train_data=train_data,
+            train_targets=train_targets,
+            test_data=test_data,
+            test_targets=test_targets,
+            universe_max=np.max(train_data, axis=0),
+            universe_min=np.min(train_data, axis=0),
+            metric_to_maximize=metric_to_maximize,
+        )
+
+        for (metric_name, metric_func) in metrics_to_save:
+            # metric_name, metric_func = metric_tuple
+            metrics[metric_name + "_train"].append(
+                metric_func(y_true=train_targets, y_pred=model.predict(train_data, train_targets))
+            )
+            metrics[metric_name + "_test"].append(
+                metric_func(y_true=test_targets, y_pred=model.predict(test_data, test_targets))
+            )
+    metrics = {key: np.mean(value) for key, value in metrics.items()}
+    return metrics
