@@ -46,7 +46,7 @@ def train_nefclass(
     for features, target in zip(train_data, train_targets):
         model.learn_rule(features, target)
 
-    best_metric_dict: Dict[str, Any] = dict(value=0, epoch=0, model=None)
+    best_metric_dict: Dict[str, Any] = dict(value=0, epoch=0, model=model)
     metrics: Dict[str, List[float]] = dict(train=[], test=[])
     # train fuzzy sets
     epoch_bar = tqdm(range(model_params["num_epoch"]))
@@ -63,12 +63,12 @@ def train_nefclass(
         )
         metrics["test"].append(metric_to_maximize(y_true=test_targets, y_pred=model.predict(test_data, test_targets)))
         this_epoch_test_metric = metrics["test"][-1]
-        if this_epoch_test_metric > best_metric_dict["value"]:
+        if this_epoch_test_metric >= best_metric_dict["value"]:
             best_metric_dict["value"] = this_epoch_test_metric
             best_metric_dict["epoch"] = epoch
             best_metric_dict["model"] = copy.deepcopy(model)
         # early stopping
-        if epoch - best_metric_dict["epoch"] > min(model_params["num_epoch"] / 10, 10):
+        if epoch - best_metric_dict["epoch"] > min(model_params["num_epoch"] / 5, 10):
             break
         best_value = best_metric_dict["value"]
         epoch_bar.set_description(f"Current: {this_epoch_test_metric:.4f}; Best: {best_value:.4f}")
@@ -80,13 +80,14 @@ def train_nefclass(
 
 
 def cross_validation_train_neflcass(
+    model_params: Dict[str, Any],
     data: np.ndarray,
     target: np.ndarray,
-    model_params: Dict[str, Any],
     preprocess_func: Callable = preprocess_with_knn_imputer_minmax_scaler,
     metric_to_maximize: Callable = f1_score,
     metrics_to_save: Tuple[Tuple[str, Callable], ...] = (("f1", f1_score),),  # type: ignore
     folds: int = 5,
+    return_full_dict: bool = False,
 ) -> Dict[str, float]:
     stratified_kfold = StratifiedKFold(n_splits=folds, random_state=seed, shuffle=True)
     metrics: Dict[str, Any] = defaultdict(list)
@@ -119,4 +120,6 @@ def cross_validation_train_neflcass(
                 metric_func(y_true=test_targets, y_pred=model.predict(test_data, test_targets))
             )
     metrics = {key: np.mean(value) for key, value in metrics.items()}
+    if return_full_dict:
+        metrics.update(model_params)
     return metrics
