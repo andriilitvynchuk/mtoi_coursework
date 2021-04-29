@@ -1,7 +1,7 @@
 from typing import NoReturn
 
 import pandas as pd
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
 
 from src.preprocess_utils import preprocess_with_knn_imputer_minmax_scaler
 from src.train_utils import cross_validation_train_neflcass
@@ -17,6 +17,7 @@ def main() -> NoReturn:
         model_params=model_params,
         preprocess_func=preprocess_with_knn_imputer_minmax_scaler,
         metric_to_maximize=f1_score,
+        metrics_to_save=(("f1", f1_score), ("accuracy", accuracy_score)),
         folds=5,
     )
     print(metrics)
