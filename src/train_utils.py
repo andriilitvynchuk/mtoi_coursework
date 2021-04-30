@@ -24,6 +24,7 @@ def train_nefclass(
     universe_max: np.ndarray,
     universe_min: np.ndarray,
     metric_to_maximize: Callable = f1_score,
+    tqdm_learning: bool = True,
 ) -> Tuple[NefClassModel, float, float]:
     model = NefClassModel(
         num_input_units=model_params["num_input_units"],
@@ -49,7 +50,7 @@ def train_nefclass(
     best_metric_dict: Dict[str, Any] = dict(value=0, epoch=0, model=model)
     metrics: Dict[str, List[float]] = dict(train=[], test=[])
     # train fuzzy sets
-    epoch_bar = tqdm(range(model_params["num_epoch"]))
+    epoch_bar = tqdm(range(model_params["num_epoch"])) if tqdm_learning else range(model_params["num_epoch"])
     for epoch in epoch_bar:
         for features, target in zip(train_data, train_targets):
             output = model(features, target)
@@ -71,7 +72,8 @@ def train_nefclass(
         if epoch - best_metric_dict["epoch"] > min(model_params["num_epoch"] / 5, 10):
             break
         best_value = best_metric_dict["value"]
-        epoch_bar.set_description(f"Current: {this_epoch_test_metric:.4f}; Best: {best_value:.4f}")
+        if tqdm_learning:
+            epoch_bar.set_description(f"Current: {this_epoch_test_metric:.4f}; Best: {best_value:.4f}")
     return (
         best_metric_dict["model"],
         metrics["train"][best_metric_dict["epoch"]],
@@ -88,6 +90,7 @@ def cross_validation_train_neflcass(
     metrics_to_save: Tuple[Tuple[str, Callable], ...] = (("f1", f1_score),),  # type: ignore
     folds: int = 5,
     return_full_dict: bool = False,
+    tqdm_learning: bool = True,
 ) -> Dict[str, float]:
     stratified_kfold = StratifiedKFold(n_splits=folds, random_state=seed, shuffle=True)
     metrics: Dict[str, Any] = defaultdict(list)
@@ -109,6 +112,7 @@ def cross_validation_train_neflcass(
             universe_max=np.max(train_data, axis=0),
             universe_min=np.min(train_data, axis=0),
             metric_to_maximize=metric_to_maximize,
+            tqdm_learning=tqdm_learning,
         )
 
         for (metric_name, metric_func) in metrics_to_save:

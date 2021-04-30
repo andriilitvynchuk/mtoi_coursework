@@ -16,9 +16,9 @@ def main() -> NoReturn:
     data = pd.read_csv("data/preprocessed_data.csv", header=0, index_col=0)
 
     grid_sigma = [0.001, 0.01, 0.1]
-    grid_num_epoch = [5, 15, 25, 50]
+    grid_num_epoch = [15, 25, 50]
     grid_num_sets = [3, 5, 7]
-    grid_kmax = [5, 10, 20, 30, 50]
+    grid_kmax = [5, 10, 25, 50]
     grid_membership = ["tri", "gaussian", "semicircle"]
 
     all_model_params = []
@@ -37,8 +37,9 @@ def main() -> NoReturn:
             metrics_to_save=(("f1", f1_score), ("accuracy", accuracy_score)),
             folds=5,
             return_full_dict=True,
+            tqdm_learning=False,
         )
-        results = list(tqdm(pool.imap(function, all_model_params[:5]), total=len(all_model_params)))
+        results = list(tqdm(pool.imap(function, all_model_params), total=len(all_model_params)))
 
     results_for_dataframe = defaultdict(list)
     for result in results:
