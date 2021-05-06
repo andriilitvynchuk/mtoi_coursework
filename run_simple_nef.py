@@ -10,7 +10,7 @@ from src.train_utils import cross_validation_train_neflcass
 def main() -> NoReturn:
     data = pd.read_csv("data/preprocessed_data.csv", header=0, index_col=0)
 
-    model_params = dict(sigma=0.01, num_epoch=5, num_sets=3, kmax=50, mf="tri")
+    model_params = dict(sigma=0.001, num_epoch=50, num_sets=7, kmax=5, mf="gaussian")
     metrics = cross_validation_train_neflcass(
         data=data.iloc[:, 1:].values,
         target=data.iloc[:, 0].values.astype(int),
